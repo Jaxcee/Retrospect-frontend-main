@@ -58,6 +58,18 @@ deleteMessageById(id){
   return axios.delete(`http://localhost:8080/message/delete/${id}`)
 }
 
+getUsernamesInRoom(roomId) {
+  return axios.get(`http://localhost:8080/usersInRoom/${roomId}`);
+}
+
+userJoinRoom(data){
+  return axios.post("http://localhost:8080/userJoinRoom", data);
+}
+
+checkRoomAccessByEmail(data) {
+  return axios.post("http://localhost:8080/rooms/check-access", data);
+}
+
 }
 
 const retro = new RetrospectService();

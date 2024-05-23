@@ -2,13 +2,12 @@ import React, { useState, useEffect } from 'react';
 import Header from './Header';
 import { Box, Typography, Button } from '@mui/material';
 import RetrospectService from '../Service/RetrospectService';
-import { useParams } from 'react-router-dom';
 import Createroom from './Createroom';
 import LockPersonIcon from '@mui/icons-material/LockPerson';
 
 const Dashboard = () => {
     const [rooms, setRooms] = useState([]);
-  
+    const userId = localStorage.getItem('userId');
     const [reloadDashboard, setReloadDashboard] = useState(false);
     const [roomToUpdate, setRoomToUpdate] = useState(null);
     const userEmail = localStorage.getItem('userEmail')
@@ -27,17 +26,22 @@ const Dashboard = () => {
         fetchRooms();
     }, [reloadDashboard]);
 
-    const openRoom = async (roomId, access) => {
+    const openRoom = async (rId, access, uId) => {
+        const res = await RetrospectService.userJoinRoom({
+            roomId: rId,
+            userId: uId,
+        });
+        console.log(res);
         if (access === 'restricted') {
             try {
                 if (userEmail) {
-                    console.log('Checking room access for email:', userEmail, 'and roomId:', roomId);
-                    const requestData = { email: userEmail, roomId: roomId };
+                    console.log('Checking room access for email:', userEmail, 'and roomId:', rId);
+                    const requestData = { email: userEmail, roomId: rId };
                     console.log('Request data:', requestData);
                     const response = await RetrospectService.checkRoomAccessByEmail(requestData);
                     console.log('Room access result:', response.data);
                     if (response.data === 'access approved') {
-                        window.open(`/chatroom/${roomId}`, '_blank');
+                        window.open(`/chatroom/${rId}`, '_blank');
                         return;
                     }
                 } else {
@@ -48,7 +52,7 @@ const Dashboard = () => {
             }
             alert("You don't have access to this room");
         } else {
-            window.open(`/chatroom/${roomId}`, '_blank');
+            window.open(`/chatroom/${rId}`, '_blank');
         }
     };
 
@@ -91,7 +95,7 @@ const Dashboard = () => {
                         <div style={{ position: 'absolute', bottom: '10px', right: '6%', display: 'flex' }}>
                             <Button variant="outlined" onClick={() => handleUpdateRoom(room)} style={{ marginRight: '10px', fontWeight: 'bold', color: 'black', width: '30px', fontSize: '10px', borderColor: 'black', background: 'white' }}>Update</Button>
                             {room.roomStatus === 'active' ? (
-                                <Button variant="contained" onClick={() => openRoom(room.roomId, room.access)} style={{ backgroundColor: '#0092ca', color: 'white', fontSize: '10px' }}>Enter Room</Button>
+                                <Button variant="contained" onClick={() => openRoom(room.roomId, room.access, userId)} style={{ backgroundColor: '#0092ca', color: 'white', fontSize: '10px' }}>Enter Room</Button>
                             ) : (
                                 <Button disabled style={{ fontWeight: 'bolder', color: '#5f6769', fontSize: '10px' }}>Room closed</Button>
                             )}

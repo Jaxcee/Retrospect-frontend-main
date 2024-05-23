@@ -13,10 +13,9 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import RetrospectService from '../Service/RetrospectService';
 import Typography from '@mui/material/Typography';
-import AddCircleOutlineRoundedIcon from '@mui/icons-material/AddCircleOutlineRounded';
-import Fab from '@mui/material/Fab';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import OptionsMenu from './OptionsMenu';
+import UsernamesDialog from './UsernamesDialog'; // Import the dialog component
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
@@ -26,6 +25,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
     padding: theme.spacing(1),
   },
 }));
+
 const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSendMessage, onDeleteMessage }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
@@ -79,7 +79,7 @@ const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSen
         {messages.map((msg, index) => (
           <div key={index} className={`message-container ${getClassName(msg.contentType)}`}>
             <p className="message-text">
-              <div style={{marginLeft:'5%'}}>{msg.username}: {msg.content} </div> 
+              {msg.username}: {msg.content}
             </p>
             <img
               src="../Asserts/options.png"
@@ -127,6 +127,7 @@ function ChatRoom() {
     Pos: '',
     Blunder: ''
   });
+  const [dialogOpen, setDialogOpen] = useState(false); // State for usernames dialog
 
   const socketRef = useRef(null);
 
@@ -138,7 +139,6 @@ function ChatRoom() {
       socketRef.current.on('connect', () => {
         console.log('Socket connected');
       });
-      
 
       socketRef.current.on('receive_message', (data) => {
         console.log('Received message from server:', data);
@@ -258,6 +258,14 @@ function ChatRoom() {
     setOpen(false);
   };
 
+  const handleDialogOpen = () => {
+    setDialogOpen(true);
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+  };
+
   return (
     <>
       <div>
@@ -267,9 +275,13 @@ function ChatRoom() {
       <div className='belowheader'>
         <p className='roomname'>{room.roomName}</p>
 
-        <Fab variant="extended" style={{ marginTop: '1%', justifyContent: 'right', fontSize: "medium" }}> <PeopleOutlineIcon sx={{ mr: 1 }} /> Users</Fab>
+        <div variant="extended" style={{ marginTop: '1.5%', marginLeft: '78%', justifyContent: 'right', fontSize: "medium", borderRadius: '7%' }}>
+          <IconButton onClick={handleDialogOpen}>
+            <PeopleOutlineIcon sx={{ color:'black'}} />
+          </IconButton>
+        </div>
 
-        <InfoOutlinedIcon style={{ margin: '2%', cursor: 'pointer' }} onClick={handleClickOpen} />
+        <InfoOutlinedIcon style={{ marginRight: '3%',marginTop:'2%', cursor: 'pointer' }} onClick={handleClickOpen} />
         <BootstrapDialog onClose={handleClose} aria-labelledby="customized-dialog-title" open={open}>
           <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title">
             Room Details
@@ -294,7 +306,7 @@ function ChatRoom() {
       <div className="container">
         <div className="chat-area">
           <MessageSection
-            title="What Went Good"
+            title="WHAT WENT GOOD"
             messages={goodMessages}
             inputValue={messageInputs.Good}
             onInputChange={(value) => handleInputChange(value, 'Good')}
@@ -302,7 +314,7 @@ function ChatRoom() {
             onDeleteMessage={handleDeleteMessage}
           />
           <MessageSection
-            title="What Went Wrong"
+            title="WHAT WENT WRONG"
             messages={badMessages}
             inputValue={messageInputs.Bad}
             onInputChange={(value) => handleInputChange(value, 'Bad')}
@@ -310,7 +322,7 @@ function ChatRoom() {
             onDeleteMessage={handleDeleteMessage}
           />
           <MessageSection
-            title="Positives"
+            title="POSITIVES"
             messages={posMessages}
             inputValue={messageInputs.Pos}
             onInputChange={(value) => handleInputChange(value, 'Pos')}
@@ -318,7 +330,7 @@ function ChatRoom() {
             onDeleteMessage={handleDeleteMessage}
           />
           <MessageSection
-            title="Blunders"
+            title="BLUNDERS"
             messages={blunderMessages}
             inputValue={messageInputs.Blunder}
             onInputChange={(value) => handleInputChange(value, 'Blunder')}
@@ -327,6 +339,7 @@ function ChatRoom() {
           />
         </div>
       </div>
+      <UsernamesDialog roomId={roomId} open={dialogOpen} onClose={handleDialogClose} />
     </>
   );
 }
