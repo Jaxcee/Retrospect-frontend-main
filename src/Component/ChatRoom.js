@@ -17,7 +17,7 @@ import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import OptionsMenu from './OptionsMenu';
 import UsernamesDialog from './UsernamesDialog';
 import AddIcon from '@mui/icons-material/Add';
-import AddTopicDialog from './AddTopicDialog'; // Import the AddTopicDialog component
+import AddTopicDialog from './AddTopicDialog';
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
@@ -28,7 +28,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
-const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSendMessage, onDeleteMessage }) => {
+const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSendMessage, onDeleteMessage, color }) => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedMessageId, setSelectedMessageId] = useState(null);
   const [showInput, setShowInput] = useState(false);
@@ -48,7 +48,7 @@ const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSen
       if (selectedMessageId) {
         await RetrospectService.deleteMessageById(selectedMessageId);
         console.log('Message deleted successfully');
-        onDeleteMessage(selectedMessageId);  // Update frontend state
+        onDeleteMessage(selectedMessageId);
         handleOptionsClose();
       }
     } catch (error) {
@@ -57,12 +57,12 @@ const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSen
   };
 
   const toggleInputArea = () => {
-    setShowInput(prev => !prev); // Toggle text area visibility
+    setShowInput(prev => !prev);
   };
 
   return (
     <div className="message-section">
-      <button className={`title-button ${getClassName(title)}`} onClick={toggleInputArea}>
+      <button className="title-button" onClick={toggleInputArea}>
         {title}
       </button>
       {showInput && (
@@ -79,7 +79,7 @@ const MessageSection = memo(({ title, messages, inputValue, onInputChange, onSen
       )}
       <div className="messages">
         {messages.map((msg, index) => (
-          <div key={index} className={`message-container ${getClassName(msg.contentType)}`}>
+          <div key={index} className="message-container" style={{ backgroundColor: color }}>
             <p className="message-text">
               {msg.username}: {msg.content}
             </p>
@@ -114,6 +114,15 @@ function getClassName(contentType) {
   }
 }
 
+function getRandomColor() {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) {
+    color += letters[Math.floor(Math.random() * 16)];
+  }
+  return color;
+}
+
 function ChatRoom() {
   const { roomId } = useParams();
   const username = localStorage.getItem('userEmail');
@@ -129,9 +138,11 @@ function ChatRoom() {
     Pos: '',
     Blunder: ''
   });
-  const [dialogOpen, setDialogOpen] = useState(false); // State for usernames dialog
-  const [additionalSections, setAdditionalSections] = useState([]); // State for additional message sections
-  const [addTopicDialogOpen, setAddTopicDialogOpen] = useState(false); // State for AddTopicDialog
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [additionalSections, setAdditionalSections] = useState([]);
+  const [dynamicMessages, setDynamicMessages] = useState({});
+  const [sectionColors, setSectionColors] = useState({});
+  const [addTopicDialogOpen, setAddTopicDialogOpen] = useState(false);
 
   const socketRef = useRef(null);
 
@@ -160,6 +171,10 @@ function ChatRoom() {
             setBlunderMessages(prev => [...prev, data]);
             break;
           default:
+            setDynamicMessages(prev => ({
+              ...prev,
+              [data.contentType]: [...(prev[data.contentType] || []), data]
+            }));
             break;
         }
       });
@@ -199,33 +214,33 @@ function ChatRoom() {
       }
       const messages = await response.json();
 
-      const good = [];
-      const bad = [];
-      const pos = [];
-      const blunder = [];
+      const messageMap = {
+        'Good': [],
+        'Bad': [],
+        'Pos': [],
+        'Blunder': []
+      };
+
       messages.forEach(msg => {
-        switch (msg.contentType) {
-          case 'Good':
-            good.push(msg);
-            break;
-          case 'Bad':
-            bad.push(msg);
-            break;
-          case 'Pos':
-            pos.push(msg);
-            break;
-          case 'Blunder':
-            blunder.push(msg);
-            break;
-          default:
-            break;
+        if (msg.contentType in messageMap) {
+          messageMap[msg.contentType].push(msg);
+        } else {
+          if (!messageMap[msg.contentType]) {
+            messageMap[msg.contentType] = [];
+          }
+          messageMap[msg.contentType].push(msg);
         }
       });
 
-      setGoodMessages(good);
-      setBadMessages(bad);
-      setPosMessages(pos);
-      setBlunderMessages(blunder);
+      setGoodMessages(messageMap['Good']);
+      setBadMessages(messageMap['Bad']);
+      setPosMessages(messageMap['Pos']);
+      setBlunderMessages(messageMap['Blunder']);
+      delete messageMap['Good'];
+      delete messageMap['Bad'];
+      delete messageMap['Pos'];
+      delete messageMap['Blunder'];
+      setDynamicMessages(messageMap);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     }
@@ -234,7 +249,13 @@ function ChatRoom() {
   const fetchTopics = async () => {
     try {
       const response = await RetrospectService.getTopicsByRoomId(roomId);
-      setAdditionalSections(response.data.map(topic => topic.name));
+      const newTopics = response.data.map(topic => topic.topicName);
+      setAdditionalSections(newTopics);
+      const newColors = {};
+      newTopics.forEach(topic => {
+        newColors[topic] = getRandomColor();
+      });
+      setSectionColors(newColors);
     } catch (error) {
       console.error('Error fetching topics:', error);
     }
@@ -262,6 +283,13 @@ function ChatRoom() {
     setBadMessages(prev => prev.filter(msg => msg.id !== messageId));
     setPosMessages(prev => prev.filter(msg => msg.id !== messageId));
     setBlunderMessages(prev => prev.filter(msg => msg.id !== messageId));
+    setDynamicMessages(prev => {
+      const newDynamicMessages = { ...prev };
+      Object.keys(newDynamicMessages).forEach(key => {
+        newDynamicMessages[key] = newDynamicMessages[key].filter(msg => msg.id !== messageId);
+      });
+      return newDynamicMessages;
+    });
   };
 
   const handleClickOpen = () => {
@@ -292,12 +320,18 @@ function ChatRoom() {
     if (newTopic) {
       try {
         const topicDetails = {
-          name: newTopic,
+          topicName: newTopic,
           roomId: roomId,
         };
         const response = await RetrospectService.addNewTopic(topicDetails);
         if (response.data) {
           setAdditionalSections(prev => [...prev, newTopic]);
+          setSectionColors(prev => ({ ...prev, [newTopic]: getRandomColor() }));
+          setDynamicMessages(prev => ({
+            ...prev,
+            [newTopic]: []
+          }));
+          setMessageInputs(prev => ({ ...prev, [newTopic]: '' }));
         } else {
           console.error('Error: Topic was not added correctly');
         }
@@ -357,6 +391,7 @@ function ChatRoom() {
             onInputChange={(value) => handleInputChange(value, 'Good')}
             onSendMessage={() => handleSendMessage('Good')}
             onDeleteMessage={handleDeleteMessage}
+            color="#68d391"
           />
           <MessageSection
             title="WHAT WENT WRONG"
@@ -365,6 +400,7 @@ function ChatRoom() {
             onInputChange={(value) => handleInputChange(value, 'Bad')}
             onSendMessage={() => handleSendMessage('Bad')}
             onDeleteMessage={handleDeleteMessage}
+            color="#fc8181"
           />
           <MessageSection
             title="POSITIVES"
@@ -373,6 +409,7 @@ function ChatRoom() {
             onInputChange={(value) => handleInputChange(value, 'Pos')}
             onSendMessage={() => handleSendMessage('Pos')}
             onDeleteMessage={handleDeleteMessage}
+            color="#f6e05e"
           />
           <MessageSection
             title="BLUNDERS"
@@ -381,16 +418,18 @@ function ChatRoom() {
             onInputChange={(value) => handleInputChange(value, 'Blunder')}
             onSendMessage={() => handleSendMessage('Blunder')}
             onDeleteMessage={handleDeleteMessage}
+            color="#f6ad55"
           />
           {additionalSections.map((section, index) => (
             <MessageSection
               key={index}
               title={section}
-              messages={[]}
+              messages={dynamicMessages[section] || []}
               inputValue={messageInputs[section] || ''}
               onInputChange={(value) => handleInputChange(value, section)}
               onSendMessage={() => handleSendMessage(section)}
               onDeleteMessage={handleDeleteMessage}
+              color={sectionColors[section]}
             />
           ))}
         </div>
