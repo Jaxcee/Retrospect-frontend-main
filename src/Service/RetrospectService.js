@@ -41,10 +41,21 @@ class RetrospectService {
     return axios.post("http://localhost:8080/forgot", emailData);
 }
 
+addNewTopic(topicDetails) {
+  return axios.post("http://localhost:8080/topic/addTopic", topicDetails);
+}
+
+getTopicsByRoomId(roomId) {
+  return axios.get(`http://localhost:8080/topic/room/${roomId}`);
+}
 
 changePassword(change) {
     return axios.post("http://localhost:8080/change", change);
 }
+getMessagesByRoomId(roomId){
+  return axios.get(`http://localhost:8080/message/${roomId}`)
+}
+
 
 checkRoomAccessByEmail(data) {
   return axios.post("http://localhost:8080/rooms/check-access", data);

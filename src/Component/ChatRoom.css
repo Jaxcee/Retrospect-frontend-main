@@ -51,20 +51,19 @@
 }
 
 .good-message, .title-button.good-message {
-  background: #dc2f2f;
-  
+  background: #68d391;
 }
 
 .bad-message, .title-button.bad-message {
-  background: #f70776;
+  background: #fc8181;
 }
 
 .pos-message, .title-button.pos-message {
-  background-color: #fda403;
+  background-color:  #f6e05e;
 }
 
 .blunder-message, .title-button.blunder-message {
-  background-color: #0c9cee
+  background-color: #f6ad55;
 }
 
 button {
@@ -86,7 +85,7 @@ button {
 }
 
 .options-image {
-  margin-left: auto;
+  margin-left: -5%;
 }
 
 .input-area {
@@ -94,7 +93,6 @@ button {
   align-items: center;
   justify-content: space-between; 
   margin: 10px;
-  
 }
 
 .textarea {
@@ -104,7 +102,6 @@ button {
   overflow-wrap: break-word;
   box-sizing: border-box;
   height: 40px; 
-
 }
 
 .send-button {

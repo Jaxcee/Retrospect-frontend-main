@@ -15,7 +15,9 @@ import RetrospectService from '../Service/RetrospectService';
 import Typography from '@mui/material/Typography';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import OptionsMenu from './OptionsMenu';
-import UsernamesDialog from './UsernamesDialog'; // Import the dialog component
+import UsernamesDialog from './UsernamesDialog';
+import AddIcon from '@mui/icons-material/Add';
+import AddTopicDialog from './AddTopicDialog'; // Import the AddTopicDialog component
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
@@ -128,6 +130,8 @@ function ChatRoom() {
     Blunder: ''
   });
   const [dialogOpen, setDialogOpen] = useState(false); // State for usernames dialog
+  const [additionalSections, setAdditionalSections] = useState([]); // State for additional message sections
+  const [addTopicDialogOpen, setAddTopicDialogOpen] = useState(false); // State for AddTopicDialog
 
   const socketRef = useRef(null);
 
@@ -187,48 +191,58 @@ function ChatRoom() {
     fetchRoom();
   }, [roomId]);
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const response = await fetch(`http://localhost:8080/message/${roomId}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const messages = await response.json();
-
-        const good = [];
-        const bad = [];
-        const pos = [];
-        const blunder = [];
-        messages.forEach(msg => {
-          switch (msg.contentType) {
-            case 'Good':
-              good.push(msg);
-              break;
-            case 'Bad':
-              bad.push(msg);
-              break;
-            case 'Pos':
-              pos.push(msg);
-              break;
-            case 'Blunder':
-              blunder.push(msg);
-              break;
-            default:
-              break;
-          }
-        });
-
-        setGoodMessages(good);
-        setBadMessages(bad);
-        setPosMessages(pos);
-        setBlunderMessages(blunder);
-      } catch (error) {
-        console.error("Failed to fetch messages:", error);
+  const fetchMessages = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/message/${roomId}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
+      const messages = await response.json();
 
+      const good = [];
+      const bad = [];
+      const pos = [];
+      const blunder = [];
+      messages.forEach(msg => {
+        switch (msg.contentType) {
+          case 'Good':
+            good.push(msg);
+            break;
+          case 'Bad':
+            bad.push(msg);
+            break;
+          case 'Pos':
+            pos.push(msg);
+            break;
+          case 'Blunder':
+            blunder.push(msg);
+            break;
+          default:
+            break;
+        }
+      });
+
+      setGoodMessages(good);
+      setBadMessages(bad);
+      setPosMessages(pos);
+      setBlunderMessages(blunder);
+    } catch (error) {
+      console.error("Failed to fetch messages:", error);
+    }
+  };
+
+  const fetchTopics = async () => {
+    try {
+      const response = await RetrospectService.getTopicsByRoomId(roomId);
+      setAdditionalSections(response.data.map(topic => topic.name));
+    } catch (error) {
+      console.error('Error fetching topics:', error);
+    }
+  };
+
+  useEffect(() => {
     fetchMessages();
+    fetchTopics();
   }, [roomId]);
 
   const handleInputChange = (value, category) => {
@@ -266,6 +280,34 @@ function ChatRoom() {
     setDialogOpen(false);
   };
 
+  const handleAddTopicDialogOpen = () => {
+    setAddTopicDialogOpen(true);
+  };
+
+  const handleAddTopicDialogClose = () => {
+    setAddTopicDialogOpen(false);
+  };
+
+  const handleAddSection = async (newTopic) => {
+    if (newTopic) {
+      try {
+        const topicDetails = {
+          name: newTopic,
+          roomId: roomId,
+        };
+        const response = await RetrospectService.addNewTopic(topicDetails);
+        if (response.data) {
+          setAdditionalSections(prev => [...prev, newTopic]);
+        } else {
+          console.error('Error: Topic was not added correctly');
+        }
+        handleAddTopicDialogClose();
+      } catch (error) {
+        console.error('Error adding new topic:', error);
+      }
+    }
+  };
+
   return (
     <>
       <div>
@@ -275,13 +317,16 @@ function ChatRoom() {
       <div className='belowheader'>
         <p className='roomname'>{room.roomName}</p>
 
-        <div variant="extended" style={{ marginTop: '1.5%', marginLeft: '78%', justifyContent: 'right', fontSize: "medium", borderRadius: '7%' }}>
-          <IconButton onClick={handleDialogOpen}>
-            <PeopleOutlineIcon sx={{ color:'black'}} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginRight: '2%' }}>
+          <IconButton onClick={handleAddTopicDialogOpen}>
+            <AddIcon sx={{ color: 'black' }} />
           </IconButton>
+          <IconButton onClick={handleDialogOpen}>
+            <PeopleOutlineIcon sx={{ color: 'black' }} />
+          </IconButton>
+          <InfoOutlinedIcon style={{ cursor: 'pointer' }} onClick={handleClickOpen} />
         </div>
 
-        <InfoOutlinedIcon style={{ marginRight: '3%',marginTop:'2%', cursor: 'pointer' }} onClick={handleClickOpen} />
         <BootstrapDialog onClose={handleClose} aria-labelledby="customized-dialog-title" open={open}>
           <DialogTitle sx={{ m: 0, p: 2 }} id="customized-dialog-title">
             Room Details
@@ -337,9 +382,21 @@ function ChatRoom() {
             onSendMessage={() => handleSendMessage('Blunder')}
             onDeleteMessage={handleDeleteMessage}
           />
+          {additionalSections.map((section, index) => (
+            <MessageSection
+              key={index}
+              title={section}
+              messages={[]}
+              inputValue={messageInputs[section] || ''}
+              onInputChange={(value) => handleInputChange(value, section)}
+              onSendMessage={() => handleSendMessage(section)}
+              onDeleteMessage={handleDeleteMessage}
+            />
+          ))}
         </div>
       </div>
       <UsernamesDialog roomId={roomId} open={dialogOpen} onClose={handleDialogClose} />
+      <AddTopicDialog open={addTopicDialogOpen} onClose={handleAddTopicDialogClose} onAdd={handleAddSection} />
     </>
   );
 }
