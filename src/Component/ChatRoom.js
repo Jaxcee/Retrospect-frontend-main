@@ -251,11 +251,18 @@ function ChatRoom() {
       const response = await RetrospectService.getTopicsByRoomId(roomId);
       const newTopics = response.data.map(topic => topic.topicName);
       setAdditionalSections(newTopics);
+
+      const existingColors = JSON.parse(localStorage.getItem('sectionColors') || '{}');
       const newColors = {};
       newTopics.forEach(topic => {
-        newColors[topic] = getRandomColor();
+        if (!existingColors[topic]) {
+          existingColors[topic] = getRandomColor();
+        }
+        newColors[topic] = existingColors[topic];
       });
+
       setSectionColors(newColors);
+      localStorage.setItem('sectionColors', JSON.stringify(newColors));
     } catch (error) {
       console.error('Error fetching topics:', error);
     }
@@ -326,7 +333,9 @@ function ChatRoom() {
         const response = await RetrospectService.addNewTopic(topicDetails);
         if (response.data) {
           setAdditionalSections(prev => [...prev, newTopic]);
-          setSectionColors(prev => ({ ...prev, [newTopic]: getRandomColor() }));
+          const newColor = getRandomColor();
+          setSectionColors(prev => ({ ...prev, [newTopic]: newColor }));
+          localStorage.setItem('sectionColors', JSON.stringify({ ...sectionColors, [newTopic]: newColor }));
           setDynamicMessages(prev => ({
             ...prev,
             [newTopic]: []
